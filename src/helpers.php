@@ -337,6 +337,58 @@ function db_user_login(PDO $pdo, $d): int
 	}
 }
 
+function db_user_change_pwd(PDO $pdo, array $d): void
+{
+	global $g_user_id;
+
+	$req_string_fields = [
+		"old_pwd",
+		"new_pwd",
+		"cnew_pwd"
+	];
+
+	foreach ($req_string_fields as $k) {
+		if (!isset($d[$k]) || !is_string($d[$k]))
+			tne("Missing string field: {$k}", 400);
+	}
+
+	$old_pwd = $d["old_pwd"];
+	$new_pwd = $d["new_pwd"];
+	$cnew_pwd = $d["cnew_pwd"];
+
+	if ($new_pwd !== $cnew_pwd)
+		tne("The new password and retype new password must be the same", 400);
+	if ($old_pwd === $new_pwd)
+		tne("The new password must be different from the current password", 400);
+
+	$c = strlen($new_pwd);
+	if ($c < 4)
+		tne("The new password must be at least 4 characters long", 400);
+	if ($c > 512)
+		tne("The new password cannot be more than 512 characters long", 400);
+
+	try {
+		$pdo->beginTransaction();
+		$st = $pdo->prepare("SELECT password FROM users WHERE id = ? LIMIT 1;");
+		$st->execute([$g_user_id]);
+		$r = $st->fetch(PDO::FETCH_ASSOC);
+		if (!$r)
+			tne("User not found", 400);
+
+		if (!password_verify($old_pwd, $r["password"]))
+			tne("The current password is incorrect", 400);
+
+		$nw = date("Y-m-d H:i:s");
+		$hp = password_hash($new_pwd, PASSWORD_BCRYPT);
+		$st = $pdo->prepare("UPDATE users SET password = ?, updated_at = ? WHERE id = ? LIMIT 1;");
+		$st->execute([$hp, $nw, $g_user_id]);
+		$pdo->commit();
+	} catch (PDOException $e) {
+		$pdo->rollback();
+		tne("500 server error: {$e->getMessage()}", 500);
+	}
+}
+
 function db_logout_user(PDO $pdo, int $user_id, string $sess_id): void
 {
 	$st = $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ? AND sess_id = ? LIMIT 1;");
@@ -357,18 +409,30 @@ function has_login_sess(bool $update_last_active = true): bool
 
 	$st = pdo()->prepare("SELECT u.* FROM users AS u INNER JOIN user_sessions AS us ON u.id = us.user_id WHERE us.sess_id = ? AND u.id = ? LIMIT 1;");
 	$st->execute([$g_sess_id, $g_user_id]);
-	$r = $st->fetch(PDO::FETCH_NUM);
+	$r = $st->fetch(PDO::FETCH_ASSOC);
 	if (!$r)
 		return false;
 
+	$g_user = $r;
+
 out:
 	if ($update_last_active) {
-		$st = pdo()->prepare("UPDATE user_sessions SET last_active = ? WHERE sess_id = ? AND user_id = ? LIMIT 1;");
-		$st->execute([date("Y-m-d H:i:s"), $g_sess_id, $g_user_id]);
+		$nw = date("Y-m-d H:i:s");
+		$st = pdo()->prepare("UPDATE user_sessions SET last_active = ?, updated_at = ? WHERE sess_id = ? AND user_id = ? LIMIT 1;");
+		$st->execute([$nw, $nw, $g_sess_id, $g_user_id]);
 	}
 
-	$g_user = $r;
 	return true;
+}
+
+function load_comp(string $name, array $data = [])
+{
+	$fn = __DIR__."/comp/{$name}.php";
+	if (!file_exists($fn))
+		tne("Component not found: {$name}", 500);
+
+	extract($data);
+	return require $fn;
 }
 
 function json_api_res($code, $data)

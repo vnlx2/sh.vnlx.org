@@ -92,7 +92,6 @@ function submit_form()
 		try {
 			let j = JSON.parse(this.responseText);
 			if (j.code == 200) {
-				alert("Login successful.");
 				window.location = "index.php";
 			} else if (j.code == 401) {
 				alert("Wrong username or password!");
