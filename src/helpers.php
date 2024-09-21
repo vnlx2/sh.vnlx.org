@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 if (!defined("SRC__HELPERS")):
+define("SRC__HELPERS", 1);
 
 $g_sess_id = NULL;
-$g_user_ss = NULL;
+$g_user_id = NULL;
 $g_user = NULL;
 
 function vnlx_app_encrypt(string $data): ?string
@@ -83,7 +84,7 @@ define("CKP", COOKIE_PREFIX);
 function sess_start(): void
 {
 	global $g_sess_id;
-	global $g_user_ss;
+	global $g_user_id;
 
 	$ck_sess_id = &$_COOKIE[CKP."sess_id"];
 	$ck_user_ss = &$_COOKIE[CKP."user_ss"];
@@ -102,7 +103,7 @@ function sess_start(): void
 	if (isset($ck_user_ss)) {
 		$user_ss = vnlx_app_decrypt($ck_user_ss);
 		if ($user_ss)
-			$g_user_ss = $user_ss;
+			$g_user_id = $user_ss;
 	}
 }
 
@@ -118,7 +119,7 @@ function csrf_token(): string
 function sess_destroy(): void
 {
 	global $g_sess_id;
-	global $g_user_ss;
+	global $g_user_id;
 
 	$ck_sess_id = &$_COOKIE[CKP."sess_id"];
 	$ck_user_ss = &$_COOKIE[CKP."user_ss"];
@@ -130,7 +131,7 @@ function sess_destroy(): void
 
 	if (isset($ck_user_ss)) {
 		setcookie(CKP."user_ss", "", 0, "/");
-		$g_user_ss = NULL;
+		$g_user_id = NULL;
 	}
 }
 
@@ -285,7 +286,7 @@ function db_add_user_sess(PDO $pdo, int $user_id, string $sess_id): void
 
 function db_user_login(PDO $pdo, $d): int
 {
-	global $g_user_ss;
+	global $g_user_id;
 	global $g_sess_id;
 
 	$q_usern = "SELECT * FROM users WHERE username = ? LIMIT 1;";
@@ -329,34 +330,41 @@ function db_user_login(PDO $pdo, $d): int
 		$uid = (int)$r["id"];
 		db_add_user_sess($pdo, $uid, $g_sess_id);
 		setcookie(CKP."user_ss", vnlx_app_encrypt("{$uid}"), time() + 86400 * 30, "/");
-		$g_user_ss = $uid;
+		$g_user_id = $uid;
 		return $uid;
 	} catch (PDOException $e) {
 		tne("500 server error: {$e->getMessage()}", 500);
 	}
 }
 
-function has_login_sess(?PDO $pdo = NULL, bool $update_last_active = true): bool
+function db_logout_user(PDO $pdo, int $user_id, string $sess_id): void
 {
-	global $g_user_ss;
+	$st = $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ? AND sess_id = ? LIMIT 1;");
+	$st->execute([$user_id, $sess_id]);
+}
+
+function has_login_sess(bool $update_last_active = true): bool
+{
+	global $g_user_id;
 	global $g_sess_id;
 	global $g_user;
 
-	if (!$g_user_ss || !$g_sess_id)
+	if (!$g_user_id || !$g_sess_id)
 		return false;
 
-	if ($pdo === NULL)
-		$pdo = pdo();
+	if ($g_user)
+		goto out;
 
-	$st = $pdo->prepare("SELECT u.* FROM users AS u INNER JOIN user_sessions AS us ON u.id = us.user_id WHERE us.sess_id = ? AND u.id = ? LIMIT 1;");
-	$st->execute([$g_user_ss, $g_sess_id]);
+	$st = pdo()->prepare("SELECT u.* FROM users AS u INNER JOIN user_sessions AS us ON u.id = us.user_id WHERE us.sess_id = ? AND u.id = ? LIMIT 1;");
+	$st->execute([$g_sess_id, $g_user_id]);
 	$r = $st->fetch(PDO::FETCH_NUM);
 	if (!$r)
 		return false;
 
+out:
 	if ($update_last_active) {
-		$st = $pdo->prepare("UPDATE user_sessions SET last_active = ? WHERE sess_id = ? AND user_id = ? LIMIT 1;");
-		$st->execute([date("Y-m-d H:i:s"), $g_sess_id, $g_user_ss]);
+		$st = pdo()->prepare("UPDATE user_sessions SET last_active = ? WHERE sess_id = ? AND user_id = ? LIMIT 1;");
+		$st->execute([date("Y-m-d H:i:s"), $g_sess_id, $g_user_id]);
 	}
 
 	$g_user = $r;

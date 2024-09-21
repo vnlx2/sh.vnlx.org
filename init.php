@@ -1,6 +1,7 @@
 <?php
 
 if (!defined("__INIT__")):
+define("__INIT__", 1);
 
 date_default_timezone_set("UTC");
 
