@@ -63,7 +63,7 @@ button {
 </head>
 <body>
 <div class="dcg">
-	<form id="reg-form" action="javascript:void(0);" method="POST" enctype="multipart/form-data">
+	<form id="reg-form" action="javascript:void(0);" method="POST">
 		<h1>Create a VNL Shop Account</h1>
 		<input type="hidden" id="csrf" name="csrf" value="<?= e(csrf_token()); ?>"/>
 		<table>
@@ -108,12 +108,13 @@ function submit_form()
 
 	let data = new FormData(fr);
 	let xhr = new XMLHttpRequest();
+	xhr.withCredentials = true;
 	xhr.open("POST", "register.php?submit=1");
 	xhr.onload = function() {
 		try {
 			let j = JSON.parse(this.responseText);
 			if (j.code == 200) {
-				alert("Registration successful.");
+				alert("Registration successful!");
 				window.location = "login.php";
 			} else {
 				alert(j.data.msg);

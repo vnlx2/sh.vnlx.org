@@ -212,8 +212,8 @@ function db_user_register(PDO $pdo, $d): int
 		tne("The full name must be at least 3 characters long", 400);
 
 	$c = strlen($d["username"]);
-	if ($c < 4)
-		tne("The username must be at least 4 characters long", 400);
+	if ($c < 3)
+		tne("The username must be at least 3 characters long", 400);
 	if ($c > 64)
 		tne("The username cannot be more than 64 characters long");
 	if (!preg_match("/^[a-zA-Z0-9][a-zA-Z0-9\.\-\_]{2,62}[a-zA-Z0-9]$/", $d["username"]))
