@@ -2,7 +2,7 @@
 
 require __DIR__."/../init.php";
 
-if ($g_user_ss !== NULL) {
+if (has_login_sess()) {
 	header("Location: index.php?ref=register");
 	exit(0);
 }
@@ -33,7 +33,7 @@ if (isset($_GET["submit"]) && $_SERVER["REQUEST_METHOD"] === "POST") {
 <html>
 <head>
 <meta charset="utf-8">
-<title>Register</title>
+<title><?= e(APP_NAME); ?> | Register</title>
 <link rel="stylesheet" type="text/css" href="<?= ASSETS_URL_PATH ?>/css/common.css" />
 <script type="text/javascript" src="<?= ASSETS_URL_PATH ?>/js/common.js"></script>
 <style type="text/css">
@@ -50,15 +50,6 @@ if (isset($_GET["submit"]) && $_SERVER["REQUEST_METHOD"] === "POST") {
 	margin: auto;
 	text-align: left;
 }
-button {
-	cursor: pointer;
-}
-#btn-submit {
-	margin-top: 30px;
-	padding: 8px 15px 8px 15px;
-	font-size: 16px;
-	font-weight: bold;
-}
 </style>
 </head>
 <body>
@@ -74,18 +65,13 @@ button {
 				<tr><td>Password</td><td>:</td><td><input type="password" name="password" required/></td></tr>
 				<tr><td>Retype Password</td><td>:</td><td><input type="password" name="cpassword" required/></td></tr>
 				<tr><td colspan="3" align="center"><button id="btn-submit" type="submit">Register</button></td></tr>
+				<tr><td colspan="3" align="center"><p>Already have an account? <a href="login.php?ref=register">Login</a></p></td></tr>
 			</tbody>
 		</table>
 	</form>
 </div>
 <script type="text/javascript">
 const reg_form = gid("reg-form");
-
-function handle_submit(j)
-{
-
-}
-
 function submit_form()
 {
 	let fr = gid("reg-form");
@@ -120,15 +106,12 @@ function submit_form()
 				alert(j.data.msg);
 			}
 		} catch (e) {
-			alert("An error occurred.");
+			alert("Error: " + e);
 		}
 	};
 	xhr.send(data);
 }
-
-reg_form.addEventListener("submit", function() {
-	submit_form();
-});
+reg_form.addEventListener("submit", submit_form);
 </script>
 </body>
 </html>

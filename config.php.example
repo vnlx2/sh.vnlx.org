@@ -3,9 +3,18 @@
 const DB_HOST = "10.11.70.2";
 const DB_PORT = 3306;
 const DB_USER = "root";
-const DB_PASS = "RXOWQEfQefdS+f8UKgtJS8X5QjwE";
+const DB_PASS = "";
 const DB_NAME = "vnlx_shop";
 const COOKIE_PREFIX = "vnl_";
-const ENCRYPTION_KEY = "trOuxkauRQV6bWoXKpHO9JmdxEh6jg8+p8zz++bi/7I=";
-const ASSETS_URL_PATH = "/assets/";
-const ASSETS_DIR_PATH = __DIR__ . "/public/assets/";
+const APP_KEY = "RXOWQEfQef";
+const ASSETS_URL_PATH = "/assets";
+const ASSETS_DIR_PATH = __DIR__ . "/public/assets";
+
+const PDO_DSN = "mysql:host=".DB_HOST.";port=".DB_PORT.";dbname=".DB_NAME;
+const PDO_OPT = [
+	PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+	PDO::ATTR_EMULATE_PREPARES => false,
+	PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+];
+const PDO_INIT_ARGS = [PDO_DSN, DB_USER, DB_PASS, PDO_OPT];
+const APP_NAME = "VNLX Shop";

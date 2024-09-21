@@ -5,6 +5,7 @@ if (!defined("SRC__HELPERS")):
 
 $g_sess_id = NULL;
 $g_user_ss = NULL;
+$g_user = NULL;
 
 function vnlx_app_encrypt(string $data): ?string
 {
@@ -265,6 +266,101 @@ function db_user_register(PDO $pdo, $d): int
 		$pdo->rollback();
 		tne("500 server error: {$e->getMessage()}", 500);
 	}
+}
+
+function db_add_user_sess(PDO $pdo, int $user_id, string $sess_id): void
+{
+	$st = $pdo->prepare("INSERT INTO user_sessions (user_id, sess_id, ip_addr, user_agent, last_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NULL);");
+	$nw = date("Y-m-d H:i:s");
+
+	$st->execute([
+		$user_id,
+		$sess_id,
+		isset($_SERVER["REMOTE_ADDR"]) ? inet_pton($_SERVER["REMOTE_ADDR"]) : NULL,
+		$_SERVER["HTTP_USER_AGENT"] ?? NULL,
+		$nw,
+		$nw
+	]);
+}
+
+function db_user_login(PDO $pdo, $d): int
+{
+	global $g_user_ss;
+	global $g_sess_id;
+
+	$q_usern = "SELECT * FROM users WHERE username = ? LIMIT 1;";
+	$q_email = "SELECT u.* FROM users INNER JOIN user_emails AS ue ON u.id = ue.user_id WHERE ue.email = ? LIMIT 1;";
+	$q_phone = "SELECT u.* FROM users INNER JOIN user_phones AS up ON u.id = up.user_id WHERE u.username = ? OR up.phone = ? LIMIT 1;";
+
+	$req_string_fields = [
+		"user",
+		"pass"
+	];
+
+	foreach ($req_string_fields as $k) {
+		if (!isset($d[$k]) || !is_string($d[$k]))
+			tne("Missing string field: {$k}", 400);
+	}
+
+	$user = trim($d["user"]);
+	$pass = $d["pass"];
+
+	if (filter_var($user, FILTER_VALIDATE_EMAIL)) {
+		$q = $q_email;
+		$d = [$user];
+	} else if (preg_match("/^[0-9]+$/", $user)) {
+		$q = $q_phone;
+		$d = [$user, $user];
+	} else {
+		$q = $q_usern;
+		$d = [$user];
+	}
+
+	try {
+		$st = $pdo->prepare($q);
+		$st->execute($d);
+		$r = $st->fetch(PDO::FETCH_ASSOC);
+		if (!$r)
+			tne("Wrong username or password!", 401);
+
+		if (!password_verify($pass, $r["password"]))
+			tne("Wrong username or password!", 401);
+
+		$uid = (int)$r["id"];
+		db_add_user_sess($pdo, $uid, $g_sess_id);
+		setcookie(CKP."user_ss", vnlx_app_encrypt("{$uid}"), time() + 86400 * 30, "/");
+		$g_user_ss = $uid;
+		return $uid;
+	} catch (PDOException $e) {
+		tne("500 server error: {$e->getMessage()}", 500);
+	}
+}
+
+function has_login_sess(?PDO $pdo = NULL, bool $update_last_active = true): bool
+{
+	global $g_user_ss;
+	global $g_sess_id;
+	global $g_user;
+
+	if (!$g_user_ss || !$g_sess_id)
+		return false;
+
+	if ($pdo === NULL)
+		$pdo = pdo();
+
+	$st = $pdo->prepare("SELECT u.* FROM users AS u INNER JOIN user_sessions AS us ON u.id = us.user_id WHERE us.sess_id = ? AND u.id = ? LIMIT 1;");
+	$st->execute([$g_user_ss, $g_sess_id]);
+	$r = $st->fetch(PDO::FETCH_NUM);
+	if (!$r)
+		return false;
+
+	if ($update_last_active) {
+		$st = $pdo->prepare("UPDATE user_sessions SET last_active = ? WHERE sess_id = ? AND user_id = ? LIMIT 1;");
+		$st->execute([date("Y-m-d H:i:s"), $g_sess_id, $g_user_ss]);
+	}
+
+	$g_user = $r;
+	return true;
 }
 
 function json_api_res($code, $data)
