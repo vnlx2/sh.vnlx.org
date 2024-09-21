@@ -222,7 +222,7 @@ function db_user_register(PDO $pdo, $d): int
 		tne("The username must match the following regex pattern: /^[a-zA-Z0-9][a-zA-Z0-9\.\-\_]{2,62}[a-zA-Z0-9]$/", 400);
 
 	$c = strlen($d["email"]);
-	if ($c < 6)
+	if ($c < 5)
 		tne("The e-mail must be at least 5 characters long", 400);
 	if ($c > 200)
 		tne("The e-mail cannot be more than 200 characters long", 400);
