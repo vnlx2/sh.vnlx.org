@@ -1,0 +1,11 @@
+<?php
+
+const DB_HOST = "10.11.70.2";
+const DB_PORT = 3306;
+const DB_USER = "root";
+const DB_PASS = "RXOWQEfQefdS+f8UKgtJS8X5QjwE";
+const DB_NAME = "vnlx_shop";
+const COOKIE_PREFIX = "vnl_";
+const ENCRYPTION_KEY = "trOuxkauRQV6bWoXKpHO9JmdxEh6jg8+p8zz++bi/7I=";
+const ASSETS_URL_PATH = "/assets/";
+const ASSETS_DIR_PATH = __DIR__ . "/public/assets/";

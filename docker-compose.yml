@@ -1,0 +1,33 @@
+networks:
+  tmp001:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.11.70.0/24
+        gateway: 10.11.70.1
+    driver_opts:
+      com.docker.network.bridge.name: tmp001
+
+services:
+  mysql:
+    networks:
+      tmp001:
+        ipv4_address: 10.11.70.2
+    image: mysql:8
+    volumes:
+      - ./storage/mysql:/var/lib/mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "RXOWQEfQefdS+f8UKgtJS8X5QjwE"
+      MYSQL_USER: "gwleak"
+      MYSQL_PASSWORD: "RXOWQEfQefdS+f8UKgtJS8X5QjwE"
+
+  adminer:
+    networks:
+      tmp001:
+        ipv4_address: 10.11.70.3
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8111:8080
